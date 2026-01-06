@@ -8,21 +8,19 @@
 
 int main(int argc, char** argv)
 {
-    // DON'T initialize ROS2 yet - do Astra first
     std::cout << "Initializing Astra SDK..." << std::endl;
     
-    // Try-catch around astra init
     try {
         astra::initialize();
         std::cout << "Astra initialized, waiting..." << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(2));  // Give USB thread time
+        std::this_thread::sleep_for(std::chrono::seconds(2));  
     }
     catch (const std::exception& e) {
         std::cerr << "Failed to initialize Astra: " << e.what() << std::endl;
         return 1;
     }
     
-    // NOW initialize ROS2
+
     rclcpp::init(argc, argv);
     std::cout << "ROS2 initialized" << std::endl;
 
