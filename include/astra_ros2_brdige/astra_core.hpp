@@ -1,6 +1,7 @@
 #ifndef ASTRA_ROS2_BRIDGE_ASTRA_CORE_HPP
 #define ASTRA_ROS2_BRIDGE_ASTRA_CORE_HPP
 
+#include <sensor_msgs/msg/camera_info.hpp>
 #include "astra/streams/Color.hpp"
 #include "astra/streams/Depth.hpp"
 #include "astra_core/Frame.hpp"
@@ -112,6 +113,8 @@ public:
         cloud_pub_ = create_publisher<sensor_msgs::msg::PointCloud2>("camera/point_cloud", 10);
 
         RCLCPP_INFO(get_logger(), "Publishers created.");
+        rgb_info_pub_   = create_publisher<sensor_msgs::msg::CameraInfo>("camera/rgb/camera_info", 10);
+        depth_info_pub_ = create_publisher<sensor_msgs::msg::CameraInfo>("camera/depth/camera_info", 10);
 
         try
         {
@@ -160,7 +163,8 @@ public:
         depthStream.start();
         auto ColorStream= reader_->stream<astra::ColorStream>();
         ColorStream.start();
-         
+        init_camera_info();
+     
         // Print camera info
         char serialnumber[256];
         depthStream.serial_number(serialnumber, 256);
@@ -195,8 +199,39 @@ public:
             }
             RCLCPP_INFO(get_logger(), "Astra update thread stopped");
         });
-        
         RCLCPP_INFO(get_logger(), "Astra streams started successfully");
+    }
+    void init_camera_info()
+    {
+        auto depthStream = reader_->stream<astra::DepthStream>();
+
+        // --- DEPTH ---
+        depth_info_.header.frame_id = "camera_depth_frame";
+        depth_info_.width  = 640; 
+        depth_info_.height = 640; 
+        depth_info_.distortion_model = "plumb_bob";
+        depth_info_.d = {0, 0, 0, 0, 0};
+
+        float fx_d = depth_info_.width  / (2.0f * tan(depthStream.hFov() / 2.0f));
+        float fy_d = depth_info_.height / (2.0f * tan(depthStream.vFov() / 2.0f));
+        float cx_d = depth_info_.width / 2.0f;
+        float cy_d = depth_info_.height / 2.0f;
+
+        depth_info_.k = {
+            fx_d, 0.0, cx_d,
+            0.0, fy_d, cy_d,
+            0.0, 0.0, 1.0
+        };
+
+        depth_info_.p = {
+            fx_d, 0.0, cx_d, 0.0,
+            0.0, fy_d, cy_d, 0.0,
+            0.0, 0.0, 1.0, 0.0
+        };
+
+        // --- RGB ---
+        rgb_info_ = depth_info_;  // Astra RGB often matches depth intrinsics
+        rgb_info_.header.frame_id = "camera_color_frame";
     }
 
 private:
@@ -235,6 +270,16 @@ private:
                     RCLCPP_DEBUG(get_logger(), "Published RGB frame.");
                 }
             }
+            
+            {
+
+                depth_info_pub_->publish(depth_info_);
+                RCLCPP_DEBUG(get_logger(), "Depth camera info.");
+                rgb_info_pub_->publish(rgb_info_);
+                RCLCPP_DEBUG(get_logger(), "RGB camera info.");
+
+            } 
+            
         }
         catch (const std::exception &e)
         {
@@ -253,9 +298,17 @@ public:
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr depth_pub_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_pub_;
     rclcpp::TimerBase::SharedPtr timer_;
+   
     std::unique_ptr<astra::Frame> _frame_astra;
     std::thread astra_thread_;
+    
+    rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr rgb_info_pub_;
+    rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr depth_info_pub_;
     std::atomic<bool> should_continue_;
+    
+    sensor_msgs::msg::CameraInfo rgb_info_;
+    sensor_msgs::msg::CameraInfo depth_info_;
+
 };
 
 #endif
