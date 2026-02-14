@@ -15,6 +15,10 @@ find_package(geometry_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(grasp_msgs REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+
+
+
 
 # --- Find Astra SDK ---
 set(ASTRA_ROOT "/home/alex/workspaces/astra_sdk")
@@ -43,6 +47,7 @@ target_link_libraries(astra_ros2_bridge
 # --- Set ROS 2 dependencies ---
 ament_target_dependencies(astra_ros2_bridge
   rclcpp
+  tf2_geometry_msgs
   sensor_msgs
   geometry_msgs
   cv_bridge

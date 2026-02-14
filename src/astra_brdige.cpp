@@ -5,7 +5,6 @@
 #include <thread>
 #include <chrono>
 
-
 int main(int argc, char** argv)
 {
     std::cout << "Initializing Astra SDK..." << std::endl;
@@ -25,7 +24,7 @@ int main(int argc, char** argv)
     std::cout << "ROS2 initialized" << std::endl;
 
     std::shared_ptr<AstraROS2Bridge> node;
-    
+ 
     try
     {
         std::cout << "Creating ROS2 Node..." << std::endl;
@@ -35,7 +34,8 @@ int main(int argc, char** argv)
         std::cout << "Starting streams..." << std::endl;
         node->start_streams();
         std::cout << "Streams started successfully" << std::endl;
-
+        node->set_parameter(rclcpp::Parameter("use_sim_time", true));
+ 
         std::cout << "Spinning..." << std::endl;
         rclcpp::spin(node);
     }
